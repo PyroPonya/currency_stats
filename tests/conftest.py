@@ -1,46 +1,46 @@
 import pytest
+import tempfile
+import os
+import asyncio
 from fastapi.testclient import TestClient
-from app.main import app
-from app.database import get_db
 import aiosqlite
-from contextlib import asynccontextmanager
+import app.database as database   # ← импортируем модуль, а не атрибут app
 
 
 @pytest.fixture(scope="function")
-async def db_cleanup():
-    """Создаёт временную БД в памяти с таблицей и подменяет get_db."""
-    # Создаём in-memory БД
-    conn = await aiosqlite.connect(":memory:")
-    # Создаём таблицу
-    await conn.execute('''
-        CREATE TABLE rate_requests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            usd REAL,
-            eur REAL,
-            gbp REAL,
-            jpy REAL,
-            chf REAL
-        )
-    ''')
-    await conn.commit()
+def client():
+    # 1. Создаём временный файл БД
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
 
-    # Функция для переопределения зависимости get_db
-    @asynccontextmanager
-    async def override_get_db():
-        yield conn
+    # 2. Подменяем путь к БД в модуле database
+    original_url = database.DATABASE_URL
+    database.DATABASE_URL = db_path
 
-    # Переопределяем
-    app.dependency_overrides[get_db] = override_get_db
+    # 3. Создаём таблицу в этом временном файле
+    async def init_test_db():
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute('''
+                CREATE TABLE rate_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    usd REAL,
+                    eur REAL,
+                    gbp REAL,
+                    jpy REAL,
+                    chf REAL
+                )
+            ''')
+            await db.commit()
 
-    yield conn
+    asyncio.run(init_test_db())
 
-    # Чистим
-    await conn.close()
-    app.dependency_overrides.clear()
+    # 4. Импортируем приложение (оно теперь использует подменённый DATABASE_URL)
+    from app.main import app
 
+    # 5. Создаём тестового клиента
+    yield TestClient(app)
 
-@pytest.fixture(scope="function")
-def client(db_cleanup):
-    """Клиент FastAPI с чистой БД для каждого теста."""
-    return TestClient(app)
+    # 6. Восстанавливаем исходный путь и удаляем временный файл
+    database.DATABASE_URL = original_url
+    os.unlink(db_path)
