@@ -57,11 +57,11 @@ async def get_stats():
         )
         avg_row = await avg.fetchone()
         average_rates = {
-            "usd": round(avg_row["avg_usd"], 2) or 0.0,
-            "eur": round(avg_row["avg_eur"], 2) or 0.0,
-            "gbp": round(avg_row["avg_gbp"], 2) or 0.0,
-            "jpy": round(avg_row["avg_jpy"], 2) or 0.0,
-            "chf": round(avg_row["avg_chf"], 2) or 0.0,
+            "usd": avg_row["avg_usd"] or 0.0,
+            "eur": avg_row["avg_eur"] or 0.0,
+            "gbp": avg_row["avg_gbp"] or 0.0,
+            "jpy": avg_row["avg_jpy"] or 0.0,
+            "chf": avg_row["avg_chf"] or 0.0,
         }
         last = await db.execute(
             "SELECT usd, eur, gbp, jpy, chf, timestamp FROM rate_requests "
@@ -70,11 +70,11 @@ async def get_stats():
         rows = await last.fetchall()
         last_requests = [
             CurrencyRates(
-                usd=round(r["usd"], 2),
-                eur=round(r["eur"], 2),
-                gbp=round(r["gbp"], 2),
-                jpy=round(r["jpy"], 2),
-                chf=round(r["chf"], 2),
+                usd=r["usd"],
+                eur=r["eur"],
+                gbp=r["gbp"],
+                jpy=r["jpy"],
+                chf=r["chf"],
                 timestamp=datetime.fromisoformat(
                     r["timestamp"])
             )
