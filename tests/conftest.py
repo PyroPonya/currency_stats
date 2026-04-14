@@ -4,7 +4,7 @@ import os
 import asyncio
 from fastapi.testclient import TestClient
 import aiosqlite
-import app.database as database   # ← импортируем модуль, а не атрибут app
+import app.database as database
 
 
 @pytest.fixture(scope="function")

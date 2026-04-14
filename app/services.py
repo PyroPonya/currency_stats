@@ -30,7 +30,7 @@ async def fetch_rates() -> Dict[str, float]:
                 if rate_direct != 0:
                     result[currency.lower()] = 1 / rate_direct
                 else:
-                    # Защита от деления на ноль (маловероятно)
+                    # Защита от деления на ноль
                     result[currency.lower()] = 0.0
 
             # Проверяем, что получили все нужные валюты
